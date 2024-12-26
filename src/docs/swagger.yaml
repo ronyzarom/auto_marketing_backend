@@ -1,0 +1,738 @@
+openapi: 3.0.0
+info:
+  title: Auto Marketing API
+  version: 1.0.0
+servers:
+  - url: https://api.automarketing.com/v1
+tags:
+  - name: Authentication
+  - name: Campaigns
+  - name: AI
+  - name: Analytics
+  - name: Content
+  - name: Integrations
+  - name: Companies
+
+paths:
+
+  ################################
+  ## COMPANIES
+  ################################
+  /companies:
+    get:
+      tags:
+        - Companies
+      summary: List companies
+      description: Returns a list of all companies. Typically restricted to admins or multi-tenant usage.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Company'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Companies
+      summary: Create a new company
+      description: Creates a new company (with brand guidelines, website, etc.). The newly created company can then be linked to all campaigns, content, and analytics data under `companyId`.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyCreate'
+      responses:
+        '201':
+          description: Company created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ################################
+  ## AUTHENTICATION
+  ################################
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      description: Logs in a user and returns a JWT token plus basic profile info.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: "user@example.com"
+                password:
+                  type: string
+                  example: "password123"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: jwt_token_here
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type: string
+                      name:
+                        type: string
+                      role:
+                        type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      description: Creates a new user account in the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+                name:
+                  type: string
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type: string
+                      name:
+                        type: string
+                      role:
+                        type: string
+        '409':
+          description: Conflict (email already exists)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  email:
+                    type: string
+                  name:
+                    type: string
+                  role:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ################################
+  ## CAMPAIGNS
+  ################################
+  /campaigns:
+    get:
+      tags:
+        - Campaigns
+      summary: List campaigns
+      description: Returns a paginated list of campaigns. Optional filters by status/objective.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            example: "active"
+        - name: objective
+          in: query
+          schema:
+            type: string
+            example: "sales"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Campaign'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+    post:
+      tags:
+        - Campaigns
+      summary: Create campaign
+      description: Creates a new marketing campaign.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ################################
+  ## AI ENDPOINTS
+  ################################
+  /ai/insights:
+    post:
+      tags:
+        - AI
+      summary: Get Campaign Insights
+      description: Returns AI-based or logic-based insights for a given campaign/timeframe.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                campaignId:
+                  type: string
+                timeframe:
+                  type: string
+                  example: "last_30_days"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  insights:
+                    type: object
+                    properties:
+                      performance:
+                        type: object
+                      recommendations:
+                        type: array
+                        items:
+                          type: object
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ai/generate-content:
+    post:
+      tags:
+        - AI
+      summary: Generate Content
+      description: Generates marketing content (ad copy, headlines, etc.) using AI.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                campaignId:
+                  type: string
+                type:
+                  type: string
+                  example: "ad_copy"
+                parameters:
+                  type: object
+                  properties:
+                    tone:
+                      type: string
+                      example: "professional"
+                    length:
+                      type: string
+                      example: "short"
+                    keywords:
+                      type: array
+                      items:
+                        type: string
+                      example: ["summer", "sale", "fashion"]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      type: object
+                  suggestions:
+                    type: object
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ################################
+  ## ANALYTICS
+  ################################
+  /analytics/campaigns/{id}/performance:
+    get:
+      tags:
+        - Analytics
+      summary: Get Campaign Performance
+      description: Retrieves performance metrics for a specific campaign (by ID).
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Campaign ID
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            example: "2024-06-01"
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            example: "2024-06-30"
+        - name: metrics
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+            style: form
+            explode: false
+            example: ["impressions", "clicks"]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  overview:
+                    type: object
+                  trends:
+                    type: object
+                  channelPerformance:
+                    type: object
+        '404':
+          description: Campaign not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ################################
+  ## CONTENT MANAGEMENT
+  ################################
+  /content:
+    get:
+      tags:
+        - Content
+      summary: List Content
+      description: Returns content items, optionally filtered by campaignId, status, type.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: campaignId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+          example: "draft"
+        - name: type
+          in: query
+          schema:
+            type: string
+          example: "ad_copy"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ContentItem'
+
+  ################################
+  ## INTEGRATIONS
+  ################################
+  /integrations/{platform}/connect:
+    post:
+      tags:
+        - Integrations
+      summary: Connect Platform
+      description: Connects an external ad platform (like Facebook, Google, LinkedIn).
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: platform
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "facebook"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accessToken:
+                  type: string
+                  example: "platform_access_token"
+                settings:
+                  type: object
+                  example:
+                    accountId: "advertising_account_id"
+      responses:
+        '200':
+          description: Connected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "connected"
+                  platform:
+                    type: string
+                  accounts:
+                    type: array
+                    items:
+                      type: object
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Reusable error schema if not already defined
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+            code:
+              type: string
+            details:
+              type: object
+
+    # Example Company schema
+    Company:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "company_id_123"
+        name:
+          type: string
+          example: "Fashion Inc."
+        industry:
+          type: string
+          example: "Retail"
+        websiteUrl:
+          type: string
+          format: uri
+          example: "https://www.fashioninc.com"
+        brandGuidelines:
+          type: object
+          properties:
+            toneOfVoice:
+              type: string
+              example: "friendly"
+            colorPalette:
+              type: array
+              items:
+                type: string
+              example: ["#FF0000", "#00FF00"]
+            styleNotes:
+              type: string
+              example: "Use playful language..."
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # For creating a new Company (simpler structure)
+    CompanyCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Fashion Inc."
+        industry:
+          type: string
+          example: "Retail"
+        websiteUrl:
+          type: string
+          format: uri
+          example: "https://www.fashioninc.com"
+        brandGuidelines:
+          type: object
+          properties:
+            toneOfVoice:
+              type: string
+              example: "friendly"
+            colorPalette:
+              type: array
+              items:
+                type: string
+              example: ["#FF0000", "#00FF00"]
+            styleNotes:
+              type: string
+              example: "Use playful language..."
+
+    Campaign:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: "Summer Sale 2024"
+        status:
+          type: string
+          example: "active"
+        objective:
+          type: string
+          example: "sales"
+        budget:
+          type: object
+          properties:
+            total:
+              type: number
+            spent:
+              type: number
+        dates:
+          type: object
+          properties:
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+        metrics:
+          type: object
+          properties:
+            impressions:
+              type: number
+            clicks:
+              type: number
+            conversions:
+              type: number
+
+    CampaignCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        objective:
+          type: string
+        budget:
+          type: object
+          properties:
+            total:
+              type: number
+            daily:
+              type: number
+        dates:
+          type: object
+          properties:
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+        targetAudience:
+          type: object
+          properties:
+            demographics:
+              type: object
+            interests:
+              type: array
+              items:
+                type: string
+        channels:
+          type: array
+          items:
+            type: object
+            properties:
+              platform:
+                type: string
+              settings:
+                type: object
+
+    ContentItem:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          example: "ad_copy"
+        campaign:
+          type: string
+          example: "campaign_id"
+        status:
+          type: string
+          example: "approved"
+        content:
+          type: object
+          example:
+            headline: "Summer Sale is Here!"
+            description: "Get up to 50% off..."
+            callToAction: "Shop Now"
+        performance:
+          type: object
+          properties:
+            impressions:
+              type: number
+            clicks:
+              type: number
